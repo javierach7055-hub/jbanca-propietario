@@ -33,6 +33,7 @@
     .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
     .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
     .badge { font-size: 11px; background: rgba(16,185,129,0.15); color: var(--green); padding: 3px 8px; border-radius: 99px; font-weight: 600; }
+    .currency-pill { font-size: 10px; background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); padding: 2px 6px; border-radius: 6px; font-weight: 700; margin-left: 6px; }
     .container { max-width: 720px; margin: 0 auto; padding: 14px; }
     .panel {
       background: var(--card);
@@ -102,8 +103,8 @@
       padding-bottom: 10px;
       margin-bottom: 10px;
     }
-    .banca-name { font-weight: 700; font-size: 15px; }
-    .banca-id { font-size: 11px; color: var(--muted); }
+    .banca-name { font-weight: 700; font-size: 15px; display: flex; align-items: center; }
+    .banca-id { font-size: 11px; color: var(--muted); margin-top: 2px; }
     .banca-sync { font-size: 11px; color: var(--muted); }
     .mini-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
     .mini-row span:first-child { color: var(--muted); }
@@ -185,15 +186,27 @@
   let currentOwnerCode = localStorage.getItem('jbanca_owner_code') || '';
   let rawRows = [];
 
+  const CURRENCY_CONFIG = {
+    VES: { prefix: 'Bs. ', locale: 'es-VE', decimals: 2 },
+    COP: { prefix: 'COP $', locale: 'es-CO', decimals: 0 },
+    USD: { prefix: 'USD $', locale: 'en-US', decimals: 2 },
+    EUR: { prefix: 'EUR €', locale: 'de-DE', decimals: 2 }
+  };
+
   function getCaracasToday() {
     const now = new Date();
     const ve = new Date(now.getTime() - 4 * 60 * 60 * 1000);
     return ve.toISOString().split('T')[0];
   }
 
-  function fmtBs(val) {
+  function fmtMoney(val, currencyCode) {
+    const code = (currencyCode || 'VES').toUpperCase();
+    const cfg = CURRENCY_CONFIG[code] || CURRENCY_CONFIG.VES;
     const num = Number(val || 0);
-    return 'Bs. ' + num.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return cfg.prefix + num.toLocaleString(cfg.locale, {
+      minimumFractionDigits: cfg.decimals,
+      maximumFractionDigits: cfg.decimals
+    });
   }
 
   function timeAgo(isoStr) {
@@ -268,7 +281,7 @@
           'apikey': SUPABASE_KEY
         }
       });
-      if (!res.ok) throw new Error('Error de red');
+      if (!res.ok) throw new Error('Error HTTP ' + res.status);
       rawRows = await res.json();
 
       const select = document.getElementById('filterBanca');
@@ -283,7 +296,7 @@
       rawRows.forEach(function(r) {
         const opt = document.createElement('option');
         opt.value = r.banca_id;
-        opt.textContent = r.banca_nombre;
+        opt.textContent = r.banca_nombre + ' (' + (r.moneda || 'VES') + ')';
         select.appendChild(opt);
       });
 
@@ -301,6 +314,10 @@
     const selectedBanca = document.getElementById('filterBanca').value;
     const rows = selectedBanca === 'ALL' ? rawRows : rawRows.filter(function(r) { return r.banca_id === selectedBanca; });
 
+    const currencies = Array.from(new Set(rows.map(function(r) { return (r.moneda || 'VES').toUpperCase(); })));
+    const isMixedCurrency = currencies.length > 1;
+    const activeCurrency = currencies[0] || 'VES';
+
     let vendido = 0, tickets = 0, anulado = 0, ticketsAnulados = 0, premiado = 0, pagado = 0, comision = 0, neto = 0;
     rows.forEach(function(r) {
       vendido += Number(r.total_vendido || 0);
@@ -313,16 +330,29 @@
       neto += Number(r.saldo_neto || 0);
     });
 
-    document.getElementById('kpiNeto').textContent = fmtBs(neto);
-    document.getElementById('kpiNeto').className = 'kpi-value ' + (neto >= 0 ? 'c-green' : 'c-red');
-    document.getElementById('kpiBancasCount').textContent = rows.length === 1 ? '1 banca seleccionada' : rows.length + ' bancas activas en esta fecha';
-    document.getElementById('kpiVendido').textContent = fmtBs(vendido);
-    document.getElementById('kpiTickets').textContent = tickets + ' tickets';
-    document.getElementById('kpiPagado').textContent = fmtBs(pagado);
-    document.getElementById('kpiPremiado').textContent = 'Premiado: ' + fmtBs(premiado);
-    document.getElementById('kpiComision').textContent = fmtBs(comision);
-    document.getElementById('kpiAnulado').textContent = fmtBs(anulado);
-    document.getElementById('kpiAnuladosCount').textContent = ticketsAnulados + ' anulados';
+    if (isMixedCurrency) {
+      document.getElementById('kpiNeto').textContent = 'Monedas mixtas (' + currencies.join(' / ') + ')';
+      document.getElementById('kpiNeto').className = 'kpi-value c-amber';
+      document.getElementById('kpiBancasCount').textContent = 'Filtra una banca arriba para ver su total exacto en su moneda';
+      document.getElementById('kpiVendido').textContent = 'Ver por banca';
+      document.getElementById('kpiTickets').textContent = tickets + ' tickets totales';
+      document.getElementById('kpiPagado').textContent = 'Ver por banca';
+      document.getElementById('kpiPremiado').textContent = 'Múltiples divisas activas';
+      document.getElementById('kpiComision').textContent = 'Ver por banca';
+      document.getElementById('kpiAnulado').textContent = 'Ver por banca';
+      document.getElementById('kpiAnuladosCount').textContent = ticketsAnulados + ' anulados';
+    } else {
+      document.getElementById('kpiNeto').textContent = fmtMoney(neto, activeCurrency);
+      document.getElementById('kpiNeto').className = 'kpi-value ' + (neto >= 0 ? 'c-green' : 'c-red');
+      document.getElementById('kpiBancasCount').textContent = (rows.length === 1 ? '1 banca seleccionada' : rows.length + ' bancas activas') + ' · Moneda: ' + activeCurrency;
+      document.getElementById('kpiVendido').textContent = fmtMoney(vendido, activeCurrency);
+      document.getElementById('kpiTickets').textContent = tickets + ' tickets';
+      document.getElementById('kpiPagado').textContent = fmtMoney(pagado, activeCurrency);
+      document.getElementById('kpiPremiado').textContent = 'Premiado: ' + fmtMoney(premiado, activeCurrency);
+      document.getElementById('kpiComision').textContent = fmtMoney(comision, activeCurrency);
+      document.getElementById('kpiAnulado').textContent = fmtMoney(anulado, activeCurrency);
+      document.getElementById('kpiAnuladosCount').textContent = ticketsAnulados + ' anulados';
+    }
 
     const listEl = document.getElementById('bancasList');
     if (rows.length === 0) {
@@ -332,6 +362,7 @@
 
     listEl.innerHTML = '';
     rows.forEach(function(r) {
+      const cur = (r.moneda || 'VES').toUpperCase();
       const netoBanca = Number(r.saldo_neto || 0);
       const card = document.createElement('div');
       card.className = 'banca-card';
@@ -342,7 +373,13 @@
       const info = document.createElement('div');
       const nameEl = document.createElement('div');
       nameEl.className = 'banca-name';
-      nameEl.textContent = r.banca_nombre;
+      nameEl.textContent = r.banca_nombre + ' ';
+
+      const pill = document.createElement('span');
+      pill.className = 'currency-pill';
+      pill.textContent = cur;
+      nameEl.appendChild(pill);
+
       const idEl = document.createElement('div');
       idEl.className = 'banca-id';
       idEl.textContent = 'ID: ' + r.banca_id;
@@ -357,11 +394,11 @@
       header.appendChild(syncEl);
       card.appendChild(header);
 
-      card.appendChild(createRow('Vendido (' + r.tickets_vendidos + ' tickets):', fmtBs(r.total_vendido)));
-      card.appendChild(createRow('Anulados (' + r.tickets_anulados + '):', fmtBs(r.total_anulado), 'c-red'));
-      card.appendChild(createRow('Premios Pagados:', fmtBs(r.premios_pagados), 'c-blue'));
-      card.appendChild(createRow('Comisión (' + r.comision_porcentaje + '%):', fmtBs(r.comision_vendedor), 'c-amber'));
-      card.appendChild(createRow('Saldo Neto en Caja:', fmtBs(netoBanca), netoBanca >= 0 ? 'c-green' : 'c-red', 'neto-row'));
+      card.appendChild(createRow('Vendido (' + r.tickets_vendidos + ' tickets):', fmtMoney(r.total_vendido, cur)));
+      card.appendChild(createRow('Anulados (' + r.tickets_anulados + '):', fmtMoney(r.total_anulado, cur), 'c-red'));
+      card.appendChild(createRow('Premios Pagados:', fmtMoney(r.premios_pagados, cur), 'c-blue'));
+      card.appendChild(createRow('Comisión (' + r.comision_porcentaje + '%):', fmtMoney(r.comision_vendedor, cur), 'c-amber'));
+      card.appendChild(createRow('Saldo Neto en Caja:', fmtMoney(netoBanca, cur), netoBanca >= 0 ? 'c-green' : 'c-red', 'neto-row'));
 
       listEl.appendChild(card);
     });
