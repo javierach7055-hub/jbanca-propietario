@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>JBanca Pro — Panel Multi-Banca</title>
+  <style>
+    :root {
+      --bg: #0b0f13;
+      --card: #151b22;
+      --card-border: #232d38;
+      --green: #10b981;
+      --green-dark: #059669;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --blue: #3b82f6;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding-bottom: 32px; }
+    header {
+      background: #11161d;
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .badge { font-size: 11px; background: rgba(16,185,129,0.15); color: var(--green); padding: 3px 8px; border-radius: 99px; font-weight: 600; }
+    .container { max-width: 720px; margin: 0 auto; padding: 14px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+    input, select, button {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: #0d1217;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--green); }
+    button.btn-primary {
+      background: var(--green);
+      color: #04130d;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    button.btn-primary:active { background: var(--green-dark); }
+    button.btn-ghost {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      font-size: 12px;
+      padding: 6px 10px;
+      width: auto;
+      cursor: pointer;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .kpi-card.full { grid-column: span 2; border-color: rgba(16,185,129,0.4); background: linear-gradient(145deg, #151b22, #10241d); }
+    .kpi-title { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .kpi-value { font-size: 20px; font-weight: 800; }
+    .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .c-green { color: var(--green); }
+    .c-red { color: var(--red); }
+    .c-amber { color: var(--amber); }
+    .c-blue { color: var(--blue); }
+    .banca-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .banca-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+    .banca-name { font-weight: 700; font-size: 15px; }
+    .banca-id { font-size: 11px; color: var(--muted); }
+    .banca-sync { font-size: 11px; color: var(--muted); }
+    .mini-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+    .mini-row span:first-child { color: var(--muted); }
+    .mini-row span:last-child { font-weight: 600; }
+    .mini-row.neto-row { border-top: 1px solid var(--card-border); margin-top: 6px; padding-top: 8px; }
+    .mini-row.neto-row span:first-child { color: var(--text); font-weight: 700; }
+    .mini-row.neto-row span:last-child { font-weight: 800; }
+    .empty { text-align: center; padding: 30px 15px; color: var(--muted); font-size: 14px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="dot"></span> JBanca Pro <span class="badge">PROPIETARIO</span></div>
+  <button id="btnChangeCode" class="btn-ghost hidden" onclick="resetOwnerCode()">Cambiar Código</button>
+</header>
+<div class="container">
+  <div id="loginPanel" class="panel">
+    <h3 style="margin-bottom:6px; font-size:16px;">Acceso Multi-Banca</h3>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">
+      Ingresa tu <strong>Código de Propietario</strong> para consultar en tiempo real las ventas y cuadres de tus taquillas.
+    </p>
+    <label>Código de Propietario</label>
+    <input type="text" id="inputOwnerCode" placeholder="Ej: PRO-CARLOS01" style="text-transform:uppercase;" />
+    <button class="btn-primary" onclick="saveOwnerCode()">Ver Mis Bancas</button>
+  </div>
+  <div id="dashboardPanel" class="hidden">
+    <div class="panel">
+      <div class="grid-2">
+        <div>
+          <label>Fecha</label>
+          <input type="date" id="filterDate" onchange="fetchData()" />
+        </div>
+        <div>
+          <label>Filtrar Banca</label>
+          <select id="filterBanca" onchange="renderDashboard()">
+            <option value="ALL">Todas las Bancas</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <span id="ownerLabel" style="font-size:12px; color:var(--muted);"></span>
+        <button class="btn-ghost" onclick="fetchData()">↻ Actualizar</button>
+      </div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi-card full">
+        <div class="kpi-title">SALDO NETO EN CAJA (CONSOLIDADO)</div>
+        <div class="kpi-value c-green" id="kpiNeto">Bs. 0,00</div>
+        <div class="kpi-sub" id="kpiBancasCount">0 bancas reportando</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">TOTAL VENDIDO</div>
+        <div class="kpi-value" id="kpiVendido">Bs. 0,00</div>
+        <div class="kpi-sub" id="kpiTickets">0 tickets</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">PREMIOS PAGADOS</div>
+        <div class="kpi-value c-blue" id="kpiPagado">Bs. 0,00</div>
+        <div class="kpi-sub" id="kpiPremiado">Premiado: Bs. 0,00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">COMISIÓN VENDEDORES</div>
+        <div class="kpi-value c-amber" id="kpiComision">Bs. 0,00</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">TICKETS ANULADOS</div>
+        <div class="kpi-value c-red" id="kpiAnulado">Bs. 0,00</div>
+        <div class="kpi-sub" id="kpiAnuladosCount">0 anulados</div>
+      </div>
+    </div>
+    <h4 style="font-size:12px; color:var(--muted); text-transform:uppercase; margin: 14px 0 8px;">Detalle por Taquilla / Banca</h4>
+    <div id="bancasList"></div>
+  </div>
+</div>
+<script>
+  const SUPABASE_URL = 'https://uajxaxpcolqesstanrbk.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_fwwrKMlZc9JYwMvzazTm9g_tuCKhfNy';
+  let currentOwnerCode = localStorage.getItem('jbanca_owner_code') || '';
+  let rawRows = [];
+
+  function getCaracasToday() {
+    const now = new Date();
+    const ve = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+    return ve.toISOString().split('T')[0];
+  }
+
+  function fmtBs(val) {
+    const num = Number(val || 0);
+    return 'Bs. ' + num.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function timeAgo(isoStr) {
+    if (!isoStr) return 'Sin datos';
+    const diffMin = Math.floor((Date.now() - new Date(isoStr).getTime()) / 60000);
+    if (diffMin < 1) return 'Hace un momento';
+    if (diffMin < 60) return 'Hace ' + diffMin + ' min';
+    const hrs = Math.floor(diffMin / 60);
+    return 'Hace ' + hrs + ' h ' + (diffMin % 60) + ' m';
+  }
+
+  function saveOwnerCode() {
+    const val = document.getElementById('inputOwnerCode').value.trim().toUpperCase();
+    if (!val) return alert('Por favor ingresa tu Código de Propietario.');
+    currentOwnerCode = val;
+    localStorage.setItem('jbanca_owner_code', val);
+    initView();
+  }
+
+  function resetOwnerCode() {
+    localStorage.removeItem('jbanca_owner_code');
+    currentOwnerCode = '';
+    initView();
+  }
+
+  function showEmptyMessage(el, msg) {
+    el.innerHTML = '';
+    const box = document.createElement('div');
+    box.className = 'empty';
+    box.textContent = msg;
+    el.appendChild(box);
+  }
+
+  function createRow(labelText, valueText, valueClass, extraClass) {
+    const row = document.createElement('div');
+    row.className = 'mini-row' + (extraClass ? ' ' + extraClass : '');
+    const left = document.createElement('span');
+    left.textContent = labelText;
+    const right = document.createElement('span');
+    right.textContent = valueText;
+    if (valueClass) right.className = valueClass;
+    row.appendChild(left);
+    row.appendChild(right);
+    return row;
+  }
+
+  function initView() {
+    if (!currentOwnerCode) {
+      document.getElementById('loginPanel').classList.remove('hidden');
+      document.getElementById('dashboardPanel').classList.add('hidden');
+      document.getElementById('btnChangeCode').classList.add('hidden');
+    } else {
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('dashboardPanel').classList.remove('hidden');
+      document.getElementById('btnChangeCode').classList.remove('hidden');
+      document.getElementById('ownerLabel').textContent = 'Código: ' + currentOwnerCode;
+      if (!document.getElementById('filterDate').value) {
+        document.getElementById('filterDate').value = getCaracasToday();
+      }
+      fetchData();
+    }
+  }
+
+  async function fetchData() {
+    const fecha = document.getElementById('filterDate').value || getCaracasToday();
+    const listEl = document.getElementById('bancasList');
+    showEmptyMessage(listEl, 'Consultando sincronización...');
+    try {
+      const url = SUPABASE_URL + '/rest/v1/resumen_bancas?owner_code=eq.' + encodeURIComponent(currentOwnerCode) + '&fecha=eq.' + fecha + '&order=banca_nombre.asc';
+      const res = await fetch(url, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY
+        }
+      });
+      if (!res.ok) throw new Error('Error de red');
+      rawRows = await res.json();
+
+      const select = document.getElementById('filterBanca');
+      const prevSelected = select.value;
+      select.innerHTML = '';
+
+      const allOpt = document.createElement('option');
+      allOpt.value = 'ALL';
+      allOpt.textContent = 'Todas las Bancas (' + rawRows.length + ')';
+      select.appendChild(allOpt);
+
+      rawRows.forEach(function(r) {
+        const opt = document.createElement('option');
+        opt.value = r.banca_id;
+        opt.textContent = r.banca_nombre;
+        select.appendChild(opt);
+      });
+
+      if ([].slice.call(select.options).some(function(o) { return o.value === prevSelected; })) {
+        select.value = prevSelected;
+      }
+
+      renderDashboard();
+    } catch (e) {
+      showEmptyMessage(listEl, 'No se pudo conectar con la nube. Revisa tu conexión a internet.');
+    }
+  }
+
+  function renderDashboard() {
+    const selectedBanca = document.getElementById('filterBanca').value;
+    const rows = selectedBanca === 'ALL' ? rawRows : rawRows.filter(function(r) { return r.banca_id === selectedBanca; });
+
+    let vendido = 0, tickets = 0, anulado = 0, ticketsAnulados = 0, premiado = 0, pagado = 0, comision = 0, neto = 0;
+    rows.forEach(function(r) {
+      vendido += Number(r.total_vendido || 0);
+      tickets += Number(r.tickets_vendidos || 0);
+      anulado += Number(r.total_anulado || 0);
+      ticketsAnulados += Number(r.tickets_anulados || 0);
+      premiado += Number(r.total_premiado || 0);
+      pagado += Number(r.premios_pagados || 0);
+      comision += Number(r.comision_vendedor || 0);
+      neto += Number(r.saldo_neto || 0);
+    });
+
+    document.getElementById('kpiNeto').textContent = fmtBs(neto);
+    document.getElementById('kpiNeto').className = 'kpi-value ' + (neto >= 0 ? 'c-green' : 'c-red');
+    document.getElementById('kpiBancasCount').textContent = rows.length === 1 ? '1 banca seleccionada' : rows.length + ' bancas activas en esta fecha';
+    document.getElementById('kpiVendido').textContent = fmtBs(vendido);
+    document.getElementById('kpiTickets').textContent = tickets + ' tickets';
+    document.getElementById('kpiPagado').textContent = fmtBs(pagado);
+    document.getElementById('kpiPremiado').textContent = 'Premiado: ' + fmtBs(premiado);
+    document.getElementById('kpiComision').textContent = fmtBs(comision);
+    document.getElementById('kpiAnulado').textContent = fmtBs(anulado);
+    document.getElementById('kpiAnuladosCount').textContent = ticketsAnulados + ' anulados';
+
+    const listEl = document.getElementById('bancasList');
+    if (rows.length === 0) {
+      showEmptyMessage(listEl, 'No hay movimientos sincronizados para este código y fecha.');
+      return;
+    }
+
+    listEl.innerHTML = '';
+    rows.forEach(function(r) {
+      const netoBanca = Number(r.saldo_neto || 0);
+      const card = document.createElement('div');
+      card.className = 'banca-card';
+
+      const header = document.createElement('div');
+      header.className = 'banca-header';
+
+      const info = document.createElement('div');
+      const nameEl = document.createElement('div');
+      nameEl.className = 'banca-name';
+      nameEl.textContent = r.banca_nombre;
+      const idEl = document.createElement('div');
+      idEl.className = 'banca-id';
+      idEl.textContent = 'ID: ' + r.banca_id;
+      info.appendChild(nameEl);
+      info.appendChild(idEl);
+
+      const syncEl = document.createElement('div');
+      syncEl.className = 'banca-sync';
+      syncEl.textContent = '🟢 ' + timeAgo(r.ultima_conexion);
+
+      header.appendChild(info);
+      header.appendChild(syncEl);
+      card.appendChild(header);
+
+      card.appendChild(createRow('Vendido (' + r.tickets_vendidos + ' tickets):', fmtBs(r.total_vendido)));
+      card.appendChild(createRow('Anulados (' + r.tickets_anulados + '):', fmtBs(r.total_anulado), 'c-red'));
+      card.appendChild(createRow('Premios Pagados:', fmtBs(r.premios_pagados), 'c-blue'));
+      card.appendChild(createRow('Comisión (' + r.comision_porcentaje + '%):', fmtBs(r.comision_vendedor), 'c-amber'));
+      card.appendChild(createRow('Saldo Neto en Caja:', fmtBs(netoBanca), netoBanca >= 0 ? 'c-green' : 'c-red', 'neto-row'));
+
+      listEl.appendChild(card);
+    });
+  }
+
+  initView();
+</script>
+</body>
+</html>
